@@ -15,13 +15,14 @@ def parse_args():
     parser.add_argument('--lr', type=float, default=0.1, help='Learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
     parser.add_argument('--weight_decay', type=float, default=5e-4, help='Weight decay')
-    parser.add_argument('--max_epochs', type=int, default=100, help='Number of epochs to train')
-    parser.add_argument('--milestones', type=int, nargs='+', default=[60, 80], help='Milestones for LR scheduler')
+    parser.add_argument('--max_epochs', type=int, default=200, help='Number of epochs to train')
     parser.add_argument('--gamma', type=float, default=0.1, help='LR scheduler gamma')
     parser.add_argument('--project', type=str, default='CriticalPeriodCifar10', help='Wandb project name')
+    parser.add_argument('--run_name', type=str, default='baseline', help='Wandb run name')
     parser.add_argument('--log_dir', type=str, default='logs/', help='Directory for CSV logs')
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoints/', help='Directory for model checkpoints')
     parser.add_argument('--num_workers', type=int, default=4, help='Number of workers for data loaders')
+    parser.add_argument('--precision', type=str, default="16", help='Precision for mixed precision training')
     return parser.parse_args()
 
 args = parse_args()
@@ -95,17 +96,17 @@ class CIFAR10Classifier(LightningModule):
         return [optimizer], [scheduler]
 
 # Initialize loggers
-wandb_logger = WandbLogger(project=args.project)
-csv_logger = CSVLogger(save_dir=args.log_dir, name='cifar10')
+wandb_logger = WandbLogger(name=args.run_name, project=args.project)
+csv_logger = CSVLogger(name=args.run_name, save_dir=args.log_dir)
 
 # Model checkpointing
-checkpoint_callback = ModelCheckpoint(
-    monitor='val_acc',
-    dirpath=args.checkpoint_dir,
-    filename='cifar10-{epoch:02d}-{val_acc:.2f}',
-    save_top_k=3,
-    mode='max',
-)
+# checkpoint_callback = ModelCheckpoint(
+#     monitor='val_acc',
+#     dirpath=args.checkpoint_dir,
+#     filename='cifar10-{epoch:02d}-{val_acc:.2f}',
+#     save_top_k=3,
+#     mode='max',
+# )
 
 # Initialize the Trainer
 trainer = pl.Trainer(
@@ -113,7 +114,9 @@ trainer = pl.Trainer(
     accelerator='gpu' if torch.cuda.is_available() else 'cpu',
     devices=1 if torch.cuda.is_available() else None,
     logger=[wandb_logger, csv_logger],
-    callbacks=[checkpoint_callback]
+    enable_checkpointing=False, # Don't save checkpoints
+    precision=args.precision,
+    # callbacks=[checkpoint_callback]
 )
 
 # Initialize the model
