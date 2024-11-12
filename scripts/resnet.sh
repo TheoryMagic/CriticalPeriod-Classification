@@ -3,12 +3,13 @@
 # Function to run training with specified GPU and removal epoch
 run_training() {
     local gpu=$1
-    local removal_epoch=$2
+    local deficit_epoch=$2
     
-    echo "Starting training on GPU $gpu with removal epoch $removal_epoch"
+    echo "Starting training on GPU $gpu with removal epoch $deficit_epoch"
     CUDA_VISIBLE_DEVICES=$gpu python train.py \
-        --run_name resnet18_blur_dr${removal_epoch} \
-        --t0 ${removal_epoch}
+        --run_name resnet18_blur_de${deficit_epoch} \
+        --deficit_epoch ${deficit_epoch} \
+        
 }
 
 # Array to keep track of background processes
@@ -21,9 +22,9 @@ num_gpus=$(nvidia-smi --query-gpu=count --format=csv,noheader | wc -l)
 gpu=0
 
 # Loop through removal epochs from 0 to 180 with step 20
-for removal_epoch in $(seq 0 20 180); do
+for deficit_epoch in $(seq 0 20 180); do
     # Run training on current GPU
-    run_training $gpu $removal_epoch &
+    run_training $gpu $deficit_epoch &
     
     # Store process ID
     pids[$gpu]=$!

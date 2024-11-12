@@ -15,7 +15,7 @@ def parse_args():
     parser.add_argument('--lr', type=float, default=0.1, help='Learning rate')
     parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
     parser.add_argument('--weight_decay', type=float, default=5e-4, help='Weight decay')
-    parser.add_argument('--max_epochs', type=int, default=180, help='Number of epochs to train')
+    parser.add_argument('--epochs_after_deficit', type=int, default=160, help='Number of epochs to normally train')
     parser.add_argument('--gamma', type=float, default=0.1, help='LR scheduler gamma')
     parser.add_argument('--project', type=str, default='CriticalPeriodCifar10', help='Wandb project name')
     parser.add_argument('--run_name', type=str, default='baseline', help='Wandb run name')
@@ -23,7 +23,7 @@ def parse_args():
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoints/', help='Directory for model checkpoints')
     parser.add_argument('--num_workers', type=int, default=8, help='Number of workers for data loaders')
     parser.add_argument('--precision', type=str, default="16", help='Precision for mixed precision training')
-    parser.add_argument('--t0', type=int, default=0, help='Epoch to remove cataract transform')
+    parser.add_argument('--deficit_epoch', type=int, default=0, help='Epoch to remove cataract transform')
     return parser.parse_args()
 
 args = parse_args()
@@ -144,7 +144,7 @@ csv_logger = CSVLogger(name=args.run_name, save_dir=args.log_dir)
 
 # Initialize the Trainer
 trainer = pl.Trainer(
-    max_epochs=args.max_epochs,
+    max_epochs=args.deficit_epoch + args.epochs_after_deficit,
     accelerator='gpu' if torch.cuda.is_available() else 'cpu',
     devices=1 if torch.cuda.is_available() else None,
     logger=[wandb_logger, csv_logger],
@@ -152,7 +152,7 @@ trainer = pl.Trainer(
     precision=args.precision,
     callbacks=[
         # checkpoint_callback,
-        RemoveCataractTransformCallback(args.t0, train_dataset),
+        RemoveCataractTransformCallback(args.deficit_epoch, train_dataset),
     ]
 )
 
