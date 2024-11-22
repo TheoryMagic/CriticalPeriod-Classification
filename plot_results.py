@@ -1,75 +1,80 @@
-import os
-import argparse
-import pandas as pd
 import matplotlib.pyplot as plt
 
-def parse_arguments():
-    parser = argparse.ArgumentParser(description='Plot Test Accuracy vs Removal Epoch for Different Deficits')
-    parser.add_argument('--log_dir', type=str, default='logs/', help='Directory containing CSV logs')
-    parser.add_argument('--output', type=str, default='accuracy_plot.png', help='Output plot file name')
-    return parser.parse_args()
+# 定义缺陷实验的 Epoch 和对应的 val_acc 数据
+epochs_deficit = [0, 20, 40, 60, 80, 100, 120, 140, 160, 180]
+blur_acc = [0.9499, 0.9422, 0.9289, 0.9022, 0.861, 0.8482, 0.8368, 0.8384, 0.8376, 0.8188]
+vertical_flip_acc = [0.9499, 0.9524, 0.9584, 0.9523, 0.9501, 0.9414, 0.95, 0.9468, 0.9451, 0.9457]
+noise_acc = [0.9487, 0.9511, 0.9476, 0.9392, 0.9332, 0.9255, 0.9217, 0.9209, 0.9177, 0.9186]
 
-def main():
-    args = parse_arguments()
-    log_dir = args.log_dir
-    output_file = args.output
+# 无缺陷实验的 val_acc 数据
+no_deficit_acc = [
+    0.4278, 0.56129998, 0.642400026, 0.700999975, 0.729200006, 0.773899972,
+    0.768599987, 0.809700012, 0.824899971, 0.805000007, 0.821799994, 0.82069999,
+    0.773999989, 0.841000021, 0.838500023, 0.849699974, 0.836600006, 0.859399974,
+    0.875, 0.846400023, 0.874000013, 0.8671, 0.858399987, 0.869599998,
+    0.867799997, 0.861199975, 0.860599995, 0.897599995, 0.880500019,
+    0.894900024, 0.892799973, 0.89319998, 0.896799982, 0.889900029,
+    0.87440002, 0.878600001, 0.899399996, 0.890600026, 0.890500009,
+    0.882399976, 0.896799982, 0.910000026, 0.897599995, 0.878799975,
+    0.900600016, 0.898899972, 0.90200001, 0.913800001, 0.903800011,
+    0.905399978, 0.899299979, 0.91170001, 0.916999996, 0.914099991,
+    0.917500019, 0.910000026, 0.913299978, 0.911899984, 0.918299973,
+    0.917299986, 0.918600023, 0.917699993, 0.918600023, 0.917599976,
+    0.90990001, 0.920400023, 0.927399993, 0.916299999, 0.92049998,
+    0.921899974, 0.929700017, 0.926999986, 0.924700022, 0.92750001,
+    0.927100003, 0.926299989, 0.926400006, 0.929199994, 0.930199981,
+    0.92809999, 0.923099995, 0.931999981, 0.931900024, 0.930100024,
+    0.931400001, 0.926800013, 0.930599988, 0.933300018, 0.937600017,
+    0.9375, 0.93809998, 0.938600004, 0.940599978, 0.939899981,
+    0.936999977, 0.939199984, 0.939800024, 0.937300026, 0.934599996,
+    0.942300022, 0.939100027, 0.941399992, 0.943000019, 0.942499995,
+    0.944700003, 0.939199984, 0.947300017, 0.944599986, 0.941799998,
+    0.945599973, 0.944700003, 0.944800019, 0.944500029, 0.947000027,
+    0.947300017, 0.94660002, 0.947300017, 0.947700024, 0.949400008,
+    0.948099971, 0.948000014, 0.948199987, 0.946699977, 0.948499978,
+    0.948700011, 0.948099971, 0.94749999, 0.9472, 0.948599994,
+    0.947000027, 0.948599994, 0.947899997, 0.948000014, 0.948400021,
+    0.948899984, 0.949000001, 0.948800027, 0.949299991, 0.948199987,
+    0.948700011, 0.948700011, 0.949400008, 0.948800027, 0.947600007,
+    0.948499978, 0.948000014, 0.948099971, 0.948300004, 0.948499978,
+    0.948800027, 0.948300004, 0.949000001, 0.948199987, 0.949100018,
+    0.948300004, 0.948400021, 0.948899984, 0.948400021, 0.948400021,
+    0.948700011
+]
 
-    # 定义缺陷类型
-    deficits = ["blur", "vertical_flip", "label_permutation", "noise", "none"]
+# 定义无缺陷实验的 Epoch
+epochs_no_deficit = list(range(len(no_deficit_acc)))
 
-    # 初始化数据结构
-    results = {deficit: {} for deficit in deficits if deficit != "none"}
-    baseline = {}
+# 创建图形
+plt.figure(figsize=(12, 8))
 
-    # 遍历日志文件
-    for filename in os.listdir(log_dir):
-        if not filename.endswith('.csv'):
-            continue
-        filepath = os.path.join(log_dir, filename)
-        df = pd.read_csv(filepath)
+# 绘制缺陷实验的曲线
+plt.plot(epochs_deficit, blur_acc, marker='o', label='Blur', linewidth=2)
+plt.plot(epochs_deficit, vertical_flip_acc, marker='s', label='Vertical Flip', linewidth=2)
+plt.plot(epochs_deficit, noise_acc, marker='^', label='Noise', linewidth=2)
 
-        # 提取run_name
-        run_name = filename.replace('.csv', '')
-        if run_name.startswith("baseline"):
-            # 处理基线
-            # 假设基线的val_acc随epoch变化
-            # 选择最后一个epoch的val_acc
-            final_epoch = df['epoch'].max()
-            final_acc = df[df['epoch'] == final_epoch]['val_acc'].values[0]
-            baseline['val_acc'] = final_acc
-        else:
-            # 提取deficit类型和移除epoch
-            parts = run_name.split('_de')
-            if len(parts) != 2:
-                continue
-            deficit_type = parts[0]
-            removal_epoch = int(parts[1])
+# 绘制无缺陷实验的曲线（绿色虚线）
+plt.plot(epochs_no_deficit, no_deficit_acc, linestyle='--', color='green', label='No Deficit', linewidth=2)
 
-            # 获取在移除epoch时的val_acc
-            if removal_epoch in df['epoch'].values:
-                acc = df[df['epoch'] == removal_epoch]['val_acc'].values[0]
-                results[deficit_type][removal_epoch] = acc
+# 添加标签和标题
+plt.xlabel('Epoch', fontsize=14)
+plt.ylabel('Val Accuracy', fontsize=14)
+plt.title('Val Accuracy vs Epoch for Different Deficits and No Deficit', fontsize=16)
 
-    # 绘制图形
-    plt.figure(figsize=(10, 6))
+# 添加图例
+plt.legend(fontsize=12)
 
-    # 绘制每种缺陷的曲线
-    for deficit, epochs_acc in results.items():
-        epochs = sorted(epochs_acc.keys())
-        accs = [epochs_acc[epoch] for epoch in epochs]
-        plt.plot(epochs, accs, marker='o', label=deficit)
+# 添加网格
+plt.grid(True)
 
-    # 绘制基线
-    if 'val_acc' in baseline:
-        plt.axhline(y=baseline['val_acc'], color='k', linestyle='--', label='baseline')
+# 设置 x 轴的刻度
+plt.xticks(epochs_deficit + [0, len(no_deficit_acc)//10*20], rotation=45)
 
-    plt.xlabel('Removal Epoch')
-    plt.ylabel('Test Accuracy')
-    plt.title('Test Accuracy at Removal Epoch for Different Deficits')
-    plt.legend()
-    plt.grid(True)
-    plt.savefig(output_file)
-    plt.show()
+# 调整布局以防止标签被截断
+plt.tight_layout()
 
-if __name__ == "__main__":
-    main()
+# 保存图像
+plt.savefig('accuracy_plot.png')
+
+# 显示图形
+plt.show()

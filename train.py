@@ -13,11 +13,12 @@ import random
 def parse_args():
     parser = argparse.ArgumentParser(description='CIFAR-10 Classification with PyTorch Lightning')
     parser.add_argument('--batch_size', type=int, default=128, help='Batch size for training and validation')
-    parser.add_argument('--lr', type=float, default=0.1, help='Learning rate')
-    parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
+    parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')  # 调整默认学习率
+    # 移除 momentum 参数，因为 Adam 不需要
+    # parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
     parser.add_argument('--weight_decay', type=float, default=5e-4, help='Weight decay')
     parser.add_argument('--epochs_after_deficit', type=int, default=160, help='Number of epochs to normally train')
-    parser.add_argument('--gamma', type=float, default=0.1, help='LR scheduler gamma')
+    parser.add_argument('--gamma', type=float, default=0.97, help='LR scheduler gamma')  # 保持 gamma 与 StepLR 一致
     parser.add_argument('--project', type=str, default='CriticalPeriodCifar10', help='Wandb project name')
     parser.add_argument('--run_name', type=str, default='baseline', help='Wandb run name')
     parser.add_argument('--log_dir', type=str, default='logs/', help='Directory for CSV logs')
@@ -163,10 +164,14 @@ class CIFAR10Classifier(LightningModule):
         self.log('val_acc', acc, prog_bar=True)
         
     def configure_optimizers(self):
-        optimizer = torch.optim.SGD(self.model.parameters(), lr=self.hparams.lr, 
-                                  momentum=self.hparams.momentum, 
-                                  weight_decay=self.hparams.weight_decay)
-        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=0.97)
+        # 使用 Adam 优化器，并调整学习率
+        optimizer = torch.optim.Adam(
+            self.model.parameters(),
+            lr=self.hparams.lr,
+            weight_decay=self.hparams.weight_decay
+        )
+        # 保持 StepLR 调度器，或者根据需要更改
+        scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=self.hparams.gamma)
         return [optimizer], [scheduler]
 
 # 定义回调函数以移除缺陷
