@@ -20,7 +20,8 @@ run_training() {
     CUDA_VISIBLE_DEVICES=$gpu python train.py \
         --run_name $run_name \
         --deficit_type $deficit_type \
-        --deficit_epoch $deficit_epoch &
+        --deficit_epoch $deficit_epoch \
+        --project CLP_Adam &  # 添加新的项目名称
 }
 
 # 数组存储后台进程的PID
