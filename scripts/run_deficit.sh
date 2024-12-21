@@ -30,7 +30,7 @@ run_training() {
         --run_name $run_name \
         --deficit_type $deficit_type \
         --deficit_epoch $deficit_epoch \
-        --project CLP_Adam &  # 后台运行
+        --project CLP_SGD &  # 确保项目名为 CLP_SGD
 }
 
 # 数组存储后台进程的PID
