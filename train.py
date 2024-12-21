@@ -20,7 +20,7 @@ def parse_args():
     parser.add_argument('--weight_decay', type=float, default=5e-4, help='Weight decay')
     parser.add_argument('--epochs_after_deficit', type=int, default=160, help='Number of epochs to normally train')
     parser.add_argument('--gamma', type=float, default=0.97, help='LR scheduler gamma')
-    parser.add_argument('--project', type=str, default='CriticalPeriodCifar10', help='Wandb project name')
+    parser.add_argument('--project', type=str, default='CLP_SGD', help='Wandb project name')
     parser.add_argument('--run_name', type=str, default='baseline_sgd', help='Wandb run name')
     parser.add_argument('--log_dir', type=str, default='logs/', help='Directory for CSV logs')
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoints/', help='Directory for model checkpoints')
