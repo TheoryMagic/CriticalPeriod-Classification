@@ -13,20 +13,23 @@ import random
 def parse_args():
     parser = argparse.ArgumentParser(description='CIFAR-10 Classification with PyTorch Lightning')
     parser.add_argument('--batch_size', type=int, default=128, help='Batch size for training and validation')
-    parser.add_argument('--lr', type=float, default=0.001, help='Learning rate')  # 调整默认学习率
-    # 移除 momentum 参数，因为 Adam 不需要
-    # parser.add_argument('--momentum', type=float, default=0.9, help='momentum')
+    # 将默认学习率调高，例如 0.1（SGD 通常使用更高的学习率）
+    parser.add_argument('--lr', type=float, default=0.1, help='Learning rate for SGD')
+    # 恢复 momentum 参数，以适配 SGD
+    parser.add_argument('--momentum', type=float, default=0.9, help='momentum for SGD')
     parser.add_argument('--weight_decay', type=float, default=5e-4, help='Weight decay')
     parser.add_argument('--epochs_after_deficit', type=int, default=160, help='Number of epochs to normally train')
-    parser.add_argument('--gamma', type=float, default=0.97, help='LR scheduler gamma')  # 保持 gamma 与 StepLR 一致
+    parser.add_argument('--gamma', type=float, default=0.97, help='LR scheduler gamma')
     parser.add_argument('--project', type=str, default='CriticalPeriodCifar10', help='Wandb project name')
-    parser.add_argument('--run_name', type=str, default='baseline', help='Wandb run name')
+    parser.add_argument('--run_name', type=str, default='baseline_sgd', help='Wandb run name')
     parser.add_argument('--log_dir', type=str, default='logs/', help='Directory for CSV logs')
     parser.add_argument('--checkpoint_dir', type=str, default='checkpoints/', help='Directory for model checkpoints')
     parser.add_argument('--num_workers', type=int, default=8, help='Number of workers for data loaders')
     parser.add_argument('--precision', type=str, default="16", help='Precision for mixed precision training')
     parser.add_argument('--deficit_epoch', type=int, default=0, help='Epoch to remove transform or restore labels')
-    parser.add_argument('--deficit_type', type=str, default='blur', choices=['blur', 'vertical_flip', 'label_permutation', 'noise', 'none'], help='Type of deficit to apply')
+    parser.add_argument('--deficit_type', type=str, default='blur', 
+                        choices=['blur', 'vertical_flip', 'label_permutation', 'noise', 'none'], 
+                        help='Type of deficit to apply')
     return parser.parse_args()
 
 args = parse_args()
@@ -102,7 +105,7 @@ else:
 
 val_dataset = datasets.CIFAR10(root='./data', train=False, download=True, transform=test_transforms)
 
-# 实现标签置换逻辑
+# 实现标签置换逻辑（仅当 deficit_type 为 label_permutation 时）
 if args.deficit_type == 'label_permutation' and isinstance(train_dataset, PermutedLabelsDataset):
     # 创建标签置换映射
     num_classes = 10
@@ -116,8 +119,10 @@ if args.deficit_type == 'label_permutation' and isinstance(train_dataset, Permut
     print("Applied label permutation.")
 
 # 数据加载器
-train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers, pin_memory=True)
-val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, 
+                          num_workers=args.num_workers, pin_memory=True)
+val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, 
+                        num_workers=args.num_workers, pin_memory=True)
 
 # 函数：修改 ResNet18
 def create_modified_resnet18():
@@ -164,10 +169,12 @@ class CIFAR10Classifier(LightningModule):
         self.log('val_acc', acc, prog_bar=True)
         
     def configure_optimizers(self):
-        # 使用 Adam 优化器，并调整学习率
-        optimizer = torch.optim.Adam(
+        # 使用 SGD 优化器
+        # 恢复 momentum、weight_decay 等参数
+        optimizer = torch.optim.SGD(
             self.model.parameters(),
             lr=self.hparams.lr,
+            momentum=self.hparams.momentum,
             weight_decay=self.hparams.weight_decay
         )
         # 保持 StepLR 调度器，或者根据需要更改
@@ -208,7 +215,8 @@ wandb_logger = WandbLogger(name=args.run_name, project=args.project)
 csv_logger = CSVLogger(name=args.run_name, save_dir=args.log_dir)
 
 # 初始化回调
-remove_deficit_callback = RemoveDeficitCallback(args.deficit_epoch, args.deficit_type, train_dataset if args.deficit_type != 'none' else None)
+remove_deficit_callback = RemoveDeficitCallback(args.deficit_epoch, args.deficit_type, 
+                                                train_dataset if args.deficit_type != 'none' else None)
 
 # 初始化 Trainer
 trainer = pl.Trainer(
